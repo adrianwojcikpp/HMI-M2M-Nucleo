@@ -1,0 +1,10 @@
+21:41:27 **** Incremental Build of configuration Debug for project DemoApp07_LwIP ****
+make -j12 all 
+arm-none-eabi-size   DemoApp07_LwIP.elf 
+   text	   data	    bss	    dec	    hex	filename
+ 110592	    476	  52476	 163544	  27ed8	DemoApp07_LwIP.elf
+Finished building: default.size.stdout
+ 
+
+21:41:28 Build Finished. 0 errors, 0 warnings. (took 540ms)
+
