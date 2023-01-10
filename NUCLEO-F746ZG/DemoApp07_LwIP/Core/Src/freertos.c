@@ -28,6 +28,8 @@
 #include "lwip/opt.h"
 #include "lwip/api.h"
 #include "lwip/sys.h"
+#include <string.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -139,11 +141,7 @@ void StartDefaultTask(void const * argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN StartDefaultTask */
-#if TCP_SERVER
-  tcpecho_init();
-#else
-  //udpecho_init();
-#endif
+
   /* Infinite loop */
   for(;;)
   {
@@ -171,6 +169,14 @@ void StartUdpEcho(void const * argument)
 
   osDelay(100); // TODO: add semaphore
 
+  /* create a new netbuf */
+  struct netbuf *prefix;
+  prefix = netbuf_new();
+
+  /* reference the text into the netbuf */
+  char text[] = "MESSAGE: ";
+  netbuf_ref(prefix, text, sizeof(text));
+
 #if LWIP_IPV6
   conn = netconn_new(NETCONN_UDP_IPV6);
   LWIP_ERROR("udpecho: invalid conn", (conn != NULL), return;);
@@ -184,6 +190,8 @@ void StartUdpEcho(void const * argument)
   for(;;)
   {
 	err = netconn_recv(conn, &buf);
+	prefix->addr = buf->addr;
+	prefix->port = buf->port;
 	if (err == ERR_OK)
 	{
 	  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 1);
@@ -194,7 +202,7 @@ void StartUdpEcho(void const * argument)
 	  }
 	  else
 	  {
-		buffer[buf->p->tot_len] = '\0';
+		err = netconn_send(conn, prefix);
 		err = netconn_send(conn, buf);
 
 		if(err != ERR_OK)
