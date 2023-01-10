@@ -54,6 +54,7 @@
 osThreadId defaultTaskHandle;
 osThreadId udpechoTaskHandle;
 osThreadId tcpechoTaskHandle;
+osSemaphoreId waitForLwIPHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -97,6 +98,11 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* definition and creation of waitForLwIP */
+  osSemaphoreDef(waitForLwIP);
+  waitForLwIPHandle = osSemaphoreCreate(osSemaphore(waitForLwIP), 1);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -163,19 +169,13 @@ void StartUdpEcho(void const * argument)
   /* USER CODE BEGIN StartUdpEcho */
   struct netconn *conn;
   struct netbuf *buf;
-  char buffer[128];
+  char buffer[32];
+  char response[64];
   err_t err;
+  int msg_cnt = 0;
   LWIP_UNUSED_ARG(argument);
 
-  osDelay(100); // TODO: add semaphore
-
-  /* create a new netbuf */
-  struct netbuf *prefix;
-  prefix = netbuf_new();
-
-  /* reference the text into the netbuf */
-  char text[] = "MESSAGE: ";
-  netbuf_ref(prefix, text, sizeof(text));
+  osDelay(100);
 
 #if LWIP_IPV6
   conn = netconn_new(NETCONN_UDP_IPV6);
@@ -190,8 +190,6 @@ void StartUdpEcho(void const * argument)
   for(;;)
   {
 	err = netconn_recv(conn, &buf);
-	prefix->addr = buf->addr;
-	prefix->port = buf->port;
 	if (err == ERR_OK)
 	{
 	  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 1);
@@ -202,7 +200,10 @@ void StartUdpEcho(void const * argument)
 	  }
 	  else
 	  {
-		err = netconn_send(conn, prefix);
+		msg_cnt++;
+		buffer[buf->p->tot_len] = '\0';
+		int response_len = sprintf(response, "\r\nMessage #%03d: %s", msg_cnt, buffer);
+		netbuf_ref(buf, response, response_len);
 		err = netconn_send(conn, buf);
 
 		if(err != ERR_OK)
@@ -239,7 +240,7 @@ void StartTcpEcho(void const * argument)
   int msg_cnt = 0;
   LWIP_UNUSED_ARG(argument);
 
-  osDelay(100); // TODO: add semaphore
+  osDelay(100);
 
   /* Create a new connection identifier. */
   conn = netconn_new(NETCONN_TCP);
